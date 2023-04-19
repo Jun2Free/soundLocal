@@ -198,8 +198,8 @@ parser.add_argument('--connect',
                     help="Vehicle connection target string. If not specified, SITL automatically started and used.")
 args = parser.parse_args()
 
-#connection_string = '127.0.0.1:14551'  # args.connect
-connection_string = args.connect
+connection_string = '127.0.0.1:14551'  # args.connect
+#connection_string = args.connect
 sitl = None
 
 # Start SITL if no connection string specified
@@ -303,6 +303,7 @@ while loop_count < 10:
     vehicle.simple_goto(estLocation)
 
     # sleep so we can see the change in map
+    print("\n [Drone is flying to the new location]")
     time.sleep(10)   # Should be 30 seconds
 
     # Check if the vehicle is within 5 meters of the target location
