@@ -12,6 +12,9 @@ import scipy.signal
 import pyaudio
 import wave
 import threading
+import sounddevice as sd
+import numpy as np
+import wavio
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 from pymavlink import mavutil
 
@@ -35,9 +38,8 @@ def condition_yaw(heading, relative=False):
         0, 0, 0)  # param 5 ~ 7 not used
     # send command to vehicle
     vehicle.send_mavlink(msg)
-
-    # delay to wait until yaw of copter is at desired yaw angle
-    time.sleep(3)
+    print("\n Function[condition_yaw]: Facing north")
+    time.sleep(5)   # delay to wait until yaw of copter is at desired yaw angle
     
 # Define the function for current location
 def get_current_location_rad():
@@ -73,84 +75,76 @@ def list_devices():
     pa.terminate()
 
 # Define the function for recording
-def record_audio(output_filename, device_index, duration, sample_rate=44100, channels=1, chunk_size=1024):
-    '''
-    audio_format = pyaudio.paInt16
-    pa = pyaudio.PyAudio()
+'''
+def recordAudio():
+    script_path ='./recording.sh'
+    subprocess.run(['chmod', '+x', script_path])
+    subprocess.run([script_path])
+'''
 
-    stream = pa.open(rate=sample_rate, channels=channels, format=audio_format, input=True, input_device_index=device_index, frames_per_buffer=chunk_size)
+def recordAudio(num_mics=4, channels_per_mic=2, sampling_rate=44100, duration=10, sampwidth=4):
+    
+    print("\n Function[recordAudio]")
+    total_channels = num_mics * channels_per_mic
+    def record():
+        print("\n Recording audio...")
+        audio = sd.rec(frames=duration * sampling_rate,
+                       samplerate=sampling_rate,
+                       channels=total_channels,
+                       blocking=True)
+        return audio
+    
+    raw_recordings = record()
 
-    print(f"Recording with microphone {device_index}...")
+    for mic_idx in range(num_mics):
+        channel_idx = mic_idx * channels_per_mic
+        recording = raw_recordings[:, channel_idx]
 
-    frames = []
-    num_chunks = int(sample_rate / chunk_size * duration)
+        # Save the recording to a WAV file
+        output_file = f"PiTestMic{mic_idx+1}.wav"
+        wavio.write(output_file, recording, sampling_rate, sampwidth=4)
 
-    for _ in range(num_chunks):
-        data = stream.read(chunk_size)
-        frames.append(data)
+    print("\n Recording complete. Saved to output.wav")
 
-    print(f"Recording finished with microphone {device_index}.")
-
-    stream.stop_stream()
-    stream.close()
-    pa.terminate()
-
-    wf = wave.open(output_filename, 'wb')
-    wf.setnchannels(channels)
-    wf.setsampwidth(pa.get_sample_size(audio_format))
-    wf.setframerate(sample_rate)
-    wf.writeframes(b''.join(frames))
-    wf.close()
-
-    print(f"Saved recording from microphone {device_index} to {output_filename}")
-    '''
-    pass
-
-# Define the function for multiple audio recording
-def record_multiple_microphones(device_indices, duration):
-    '''
-    threads = []
-    print("debugg point #1")
-    for device_index in device_indices:
-        output_filename = f"recording_mic{device_index}.wav"
-        t = threading.Thread(target=record_audio, args=(output_filename, device_index, duration))
-        threads.append(t)
-    print("debugg point #2")
-    for t in threads:
-        t.start()
-
-    for t in threads:
-        t.join()
-    '''
-    pass
-        
-# Define the function for TDoA
 def calculate_tdoa(file1, file2, sample_rate):
+
+    # Define the function for TDoA
     audio1, _ = librosa.load(file1, sr=sample_rate)
     audio2, _ = librosa.load(file2, sr=sample_rate)
 
     correlation = scipy.signal.correlate(audio1, audio2, mode='full')
     lag = np.argmax(correlation) - len(audio1) + 1
     time_difference = lag / sample_rate
-    print("\n Funciton[Calcuate_toda]")
     return time_difference
 
 # Define the function for localization
 def localization():
-    # 1. Calculate the time difference of arrival (TDoA) between the 4 microphones
+    # 1. Record Audio
+    '''
+    mic1_file = "PiTestMic1.wav"
+    mic2_file = "PiTestMic2.wav"
+    mic3_file = "PiTestMic3.wav"
+    mic4_file = "PiTestMic4.wav"
+    '''
     mic1_file = "recording_mic1.wav"
     mic2_file = "recording_mic2.wav"
     mic3_file = "recording_mic3.wav"
     mic4_file = "recording_mic4.wav"
 
     sample_rate = 44100
-
+    # 2. Calculate TDoA
     tdoa12 = calculate_tdoa(mic1_file, mic2_file, sample_rate)
+    print("\n Funciton[Calcuate_toda_12]")
     tdoa13 = calculate_tdoa(mic1_file, mic3_file, sample_rate)
+    print("\n Funciton[Calcuate_toda_13]")
     tdoa14 = calculate_tdoa(mic1_file, mic4_file, sample_rate)
+    print("\n Funciton[Calcuate_toda_14]")
     tdoa23 = calculate_tdoa(mic2_file, mic3_file, sample_rate)
+    print("\n Funciton[Calcuate_toda_23]")
     tdoa24 = calculate_tdoa(mic2_file, mic4_file, sample_rate)
+    print("\n Funciton[Calcuate_toda_24]")
     tdoa34 = calculate_tdoa(mic3_file, mic4_file, sample_rate)
+    print("\n Funciton[Calcuate_toda_34]")
 
     # 2. Calculate the distance between the microphones
     d12 = speed_of_sound * tdoa12
@@ -164,7 +158,7 @@ def localization():
     x = (d12**2 - d23**2 + 1**2) / (2 * 1)
     y = (d12**2 - d24**2 + 1**2 + 1**2) / (2 * 1) - (x * 1) / 1
 
-    print("\n Funciton[Localization]: \n The target is at: ", x, y)
+    print("\n Funciton[Localization]: Estimated target is at: ", x, y)
     return x, y
 
 # Define the function for changing 2D coordinates to GPS coordinates
@@ -217,8 +211,8 @@ print('\n Connect #2. Successfully connected to vehicle')
 speed_of_sound = 340.29  # Speed of sound in m/s
 vehicle.airspeed = 3     # Set default/target airspeed to 3 m/s
 loop_count = 0           # Loop counter
-REAL_TX_LAT = 35.727279 
-REAL_TX_LON = -78.69611
+REAL_TX_LAT = 35.729514 
+REAL_TX_LON = -78.699148
 TARGET_ALTITUDE = 10    # Target altitude in meters
 ALTITUDE_REACH_THRESHOLD = 0.95
 # Maximum distance (in meters) from waypoint at which drone has "reached"
@@ -257,7 +251,7 @@ if vehicle.version.vehicle_type == mavutil.mavlink.MAV_TYPE_QUADROTOR:
         time.sleep(1)
 
     # Takeoff to short altitude
-    print("Taking off!")
+    print("\n Take off [Sarted]")
     vehicle.simple_takeoff(TARGET_ALTITUDE)
 
     while True:
@@ -266,6 +260,8 @@ if vehicle.version.vehicle_type == mavutil.mavlink.MAV_TYPE_QUADROTOR:
             break
         time.sleep(0.5)
     # yaw north
+
+    print('\n Take off [Reach the target altitude: %f]', TARGET_ALTITUDE)
     condition_yaw(0)
 
 #################### Start of the Loop (at every location) ####################
@@ -285,9 +281,9 @@ while loop_count < 10:
     print("\n Main #3[Recording]")
     device_indices = [0, 1, 2, 3]
     duration = 10  # Duration in seconds
-    record_multiple_microphones(device_indices, duration)
-    print("\n [Hovering for 30 seconds: recording]")
-    time.sleep(30)   # Should be 30 seconds
+    recordAudio()
+    print("\n [Hovering for 20 seconds: recording]")
+    time.sleep(20)   # Should be 30 seconds
     
     # Execute the localization (Get the estimated target location)
     print("\n Main #4[Localization]")
@@ -300,11 +296,9 @@ while loop_count < 10:
     # Go to the estimated location of the target
     print("\n Main #5[Going to the estimated target]")
     estLocation = LocationGlobalRelative(x_axis, y_axis, TARGET_ALTITUDE)
-    vehicle.simple_goto(estLocation)
-
-    # sleep so we can see the change in map
+    vehicle.simple_goto(estLocation) 
     print("\n [Drone is flying to the new location]")
-    time.sleep(10)   # Should be 30 seconds
+    time.sleep(10)   # sleep so we can see the change in map
 
     # Check if the vehicle is within 5 meters of the target location
     print("\n Main #6[Error check: within 5 meters]")
@@ -323,10 +317,11 @@ while loop_count < 10:
 # 8. Return to launch
 print("\n Main #7[Returning to Launch]")
 vehicle.mode = VehicleMode("RTL")
-time.sleep(30)
+print("\n [Waiting for safe landing]")
+time.sleep(60)   # sleep so we can see the change in map
 
 # 9. Close vehicle object before exiting script
-print("Close vehicle object")
+print("\n Close vehicle object")
 vehicle.close()
 
 # Shut down simulator if it was started.
