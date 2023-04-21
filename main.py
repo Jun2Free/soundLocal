@@ -101,7 +101,7 @@ def recordAudio(num_mics=4, channels_per_mic=2, sampling_rate=44100, duration=10
         recording = raw_recordings[:, channel_idx]
 
         # Save the recording to a WAV file
-        output_file = f"PiTestMic{mic_idx+1}.wav"
+        output_file = f"PiTestMic00{mic_idx+1}.wav"
         wavio.write(output_file, recording, sampling_rate, sampwidth=4)
 
     print("\n Recording complete. Saved to output.wav")
@@ -120,7 +120,7 @@ def calculate_tdoa(file1, file2, sample_rate):
 # Define the function for localization
 def localization():
     # 1. Record Audio
-    '''
+    # recordAudio() 
     mic1_file = "PiTestMic1.wav"
     mic2_file = "PiTestMic2.wav"
     mic3_file = "PiTestMic3.wav"
@@ -131,7 +131,7 @@ def localization():
     mic2_file = "recording_mic2.wav"
     mic3_file = "recording_mic3.wav"
     mic4_file = "recording_mic4.wav"
-
+    '''
     sample_rate = 44100
     # 2. Calculate TDoA
     tdoa12 = calculate_tdoa(mic1_file, mic2_file, sample_rate)
@@ -212,8 +212,8 @@ print('\n Connect #2. Successfully connected to vehicle')
 speed_of_sound = 340.29  # Speed of sound in m/s
 vehicle.airspeed = 3     # Set default/target airspeed to 3 m/s
 loop_count = 0           # Loop counter
-REAL_TX_LAT = 35.729514 
-REAL_TX_LON = -78.699148
+REAL_TX_LAT = 35.770247 
+REAL_TX_LON = -78.674979
 TARGET_ALTITUDE = 10    # Target altitude in meters
 ALTITUDE_REACH_THRESHOLD = 0.95
 # Maximum distance (in meters) from waypoint at which drone has "reached"
