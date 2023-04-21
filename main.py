@@ -126,6 +126,7 @@ def localization():
     mic3_file = "PiTestMic3.wav"
     mic4_file = "PiTestMic4.wav"
     '''
+    # This line is only for test
     mic1_file = "recording_mic1.wav"
     mic2_file = "recording_mic2.wav"
     mic3_file = "recording_mic3.wav"

@@ -7,7 +7,7 @@ num_mics = 4
 channels_per_mic = 2
 total_channels = num_mics * channels_per_mic
 sampling_rate = 44100
-duration = 3  # seconds
+duration = 5  # seconds
 
 # Function to record audio simultaneously
 def record_audio():
@@ -21,17 +21,15 @@ def record_audio():
 # Recording audio
 raw_recordings = record_audio()
 
+# Specify the desired channel indices
+desired_channel_indices = [1, 4, 5, 7]
+
 # Extract the first channel from each microphone
-recordings = []
-for mic_idx in range(num_mics):
-    print("mic_idx=%f",mic_idx)
-    channel_idx = (mic_idx * channels_per_mic)
-    print("channel_idx=%f", channel_idx)
-    recording = raw_recordings[:, channel_idx]
+for i, channel_idx in enumerate(desired_channel_indices):
+    recording = raw_recordings[:,channel_idx]
     
-    # Save the recording to a WAV file
-    output_file = f"PiTestMic{mic_idx+1}.wav"
+    output_file = f"PiTestMic{i + 1}.wav"
     wavio.write(output_file, recording, sampling_rate, sampwidth=4)
-    print(f"Recording from microphone {mic_idx +1} saved")
+    print(f"Recording from microphone {channel_idx + 1} saved as PiTestMic{i + 1}")
 
 print("Recording complete. Saved to output.wav")
